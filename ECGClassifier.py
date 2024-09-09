@@ -6,7 +6,7 @@ class ECGClassification:
 		Initialize the class with the necessary parameters.
 
 		Parameters:
-		- model_name: Name of the pre-trained model (e.g., 'bert-base-uncased').
+		- model_name: Name of the pre-trained model
 		- num_labels: Number of classes (labels) in the ECG classification task.
 		- data_path: Path to the ECG dataset (optional for now).
 		"""
@@ -79,6 +79,12 @@ class ECGClassification:
 
 		return processed_data ,labels
 
+	def create_tensors_dataloader(self , input_ids , attention_mask, labels):
+		from torch.utils.data import DataLoader ,TensorDataset
+		dataset = TensorDataset(input_ids ,attention_mask ,labels)
+		dataloader = DataLoader(dataset ,batch_size = 16 ,shuffle = True)  # Adjust batch_size as needed
+		return dataset,dataloader
+
 	def fine_tune_model(self ,dataloader):
 		"""
 		Fine-tune the pre-trained BERT model on the ECG data.
@@ -92,22 +98,18 @@ class ECGClassification:
 		# Use AdamW optimizer for fine-tuning
 		optimizer = AdamW(self.model.parameters() ,lr = 5e-5)
 
-		# Example fine-tuning loop (simplified)
-		for epoch in range(3):  # Number of epochs
+		for epoch in range(10):  # Number of epochs
 			print(f"Epoch {epoch + 1}")
 			for idx ,batch in enumerate(dataloader):
 				optimizer.zero_grad()
 
-				# Accessing input_ids, attention_mask, and labels by index, as dataloader returns a tuple
 				input_ids = batch[0]
 				attention_mask = batch[1]
 				labels = batch[2]
 				print(input_ids, attention_mask, labels)
-				# Forward pass through the model
 				outputs = self.model(input_ids = input_ids ,attention_mask = attention_mask ,labels = labels)
 				loss = outputs.loss
 
-				# Backpropagate the loss and update model parameters
 				loss.backward()
 				optimizer.step()
 
@@ -132,7 +134,8 @@ class ECGClassification:
 
 	def evaluate_model(self ,test_data):
 		"""
-		Test the model and evaluate its performance on unseen ECG data.
+		Test the model and evaluate its performance on unseen ECG data,
+		applying symbolic reasoning after neural predictions.
 
 		Parameters:
 		- test_data: The preprocessed test data.
@@ -145,16 +148,24 @@ class ECGClassification:
 				input_ids = batch[0]
 				attention_mask = batch[1]
 				labels = batch[2]
-				# input_ids = batch['input_ids']
-				#
-				# attention_mask = batch['attention_mask']
-				# labels = batch['labels']
-				outputs = self.model(input_ids = input_ids ,attention_mask = attention_mask)
-				predictions = torch.argmax(outputs.logits ,dim = -1)
 
-				correct += (predictions == labels).sum().item()
+				outputs = self.model(input_ids = input_ids ,attention_mask = attention_mask)
+				neural_predictions = torch.argmax(outputs.logits ,dim = -1)
+				print("Neural predictions",neural_predictions)
+
+				# Apply symbolic reasoning to refine predictions
+				symbolic_predictions = []
+				for prediction in neural_predictions:
+					refined_prediction = self.symbolic_reasoning(prediction)
+					symbolic_predictions.append(refined_prediction)
+
+				# Compare symbolic predictions with true labels (for simplicity)
+				print(symbolic_predictions)
+				correct += sum([1 for sp ,label in zip(symbolic_predictions ,labels) if
+				                sp == f"Class {chr(65 + label.item())} (Normal Heartbeat)" or sp == f"Class {chr(65 + label.item())} (Abnormal Heartbeat)"])
 				total += labels.size(0)
 
 		accuracy = correct / total
-		print(f"Model Accuracy: {accuracy:.2f}")
+		print(f"Model Accuracy with Symbolic Reasoning: {accuracy:.2f}")
+
 
