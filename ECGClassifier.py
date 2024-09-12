@@ -1,12 +1,13 @@
 # #Goal to develop neural symbolic methods for ECG classification.
 import torch
+from torch.nn.functional import cosine_similarity
 class ECGClassification:
 	def __init__(self ,model_name ,num_labels ,data_path=None):
 		"""
 		Initialize the class with the necessary parameters.
 
 		Parameters:
-		- model_name: Name of the pre-trained model
+		- model_name: Name of the pre-trainebel
 		- num_labels: Number of classes (labels) in the ECG classification task.
 		- data_path: Path to the ECG dataset (optional for now).
 		"""
@@ -79,6 +80,9 @@ class ECGClassification:
 
 		return processed_data ,labels
 
+	def save_model(self):
+		pass
+
 	def create_tensors_dataloader(self , input_ids , attention_mask, labels):
 		from torch.utils.data import DataLoader ,TensorDataset
 		dataset = TensorDataset(input_ids ,attention_mask ,labels)
@@ -106,10 +110,9 @@ class ECGClassification:
 				input_ids = batch[0]
 				attention_mask = batch[1]
 				labels = batch[2]
-				print(input_ids, attention_mask, labels)
 				outputs = self.model(input_ids = input_ids ,attention_mask = attention_mask ,labels = labels)
 				loss = outputs.loss
-
+				print(outputs.loss.item())
 				loss.backward()
 				optimizer.step()
 
@@ -160,12 +163,26 @@ class ECGClassification:
 					symbolic_predictions.append(refined_prediction)
 
 				# Compare symbolic predictions with true labels (for simplicity)
-				print(symbolic_predictions)
 				correct += sum([1 for sp ,label in zip(symbolic_predictions ,labels) if
 				                sp == f"Class {chr(65 + label.item())} (Normal Heartbeat)" or sp == f"Class {chr(65 + label.item())} (Abnormal Heartbeat)"])
 				total += labels.size(0)
 
+				for sp,label in zip(symbolic_predictions ,labels):
+					print(sp,label)
+
 		accuracy = correct / total
 		print(f"Model Accuracy with Symbolic Reasoning: {accuracy:.2f}")
 
+	def extract_embeddings(self, input_ids , attention_mask):
+		with torch.no_grad():
+			outputs = self.model(input_ids = input_ids ,attention_mask = attention_mask, output_hidden_states=True)
+			embeddings = outputs.hidden_states[-1]
+		return embeddings
 
+	def evaluate_embeddings(self ,embeddings1, embeddings2):
+		similarity = cosine_similarity(embeddings1 ,embeddings2)
+		return similarity
+
+	def print_evaluation_embeddings(self ,similarity):
+		for i , value in enumerate(similarity):
+			print(f"{i}: {value}")

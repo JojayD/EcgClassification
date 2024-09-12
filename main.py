@@ -1,22 +1,23 @@
 from ECGClassifier import ECGClassification
 import torch
-
+from data.ecgdata import mock_data
+from data.ecgdata import mock_data2
 
 def main():
     # Initialize the ECG classifier model
     model = ECGClassification("bert-base-uncased", 2)
 
     # Load and preprocess the training data
-    data = model.load_data()  # Load the training data
-    pre_processed_data, labels = model.pre_process_data(data)
+    data = model.load_data(mock_data2)  # Load the training data
+    pre_processed_data, labels = model.pre_process_data(data['train'])
 
     # Convert the processed data and labels to tensors for DataLoader
-    input_ids = pre_processed_data['input_ids']
-    attention_mask = pre_processed_data['attention_mask']
+    train_input_ids = pre_processed_data['input_ids']
+    train_attention_mask = pre_processed_data['attention_mask']
     labels = torch.tensor(labels)
 
     # Create TensorDataset and DataLoader for batching
-    dataset, dataloader = model.create_tensors_dataloader(input_ids, attention_mask, labels)
+    dataset, dataloader = model.create_tensors_dataloader(train_input_ids, train_attention_mask, labels)
 
     # Fine-tune the model
     model.fine_tune_model(dataloader)
@@ -32,6 +33,12 @@ def main():
 
     # Evaluate the model on the test data
     model.evaluate_model(test_dataloader)
+
+    embeddings1 = model.extract_embeddings(train_input_ids ,train_attention_mask)
+    embeddings2 = model.extract_embeddings(test_input_ids ,train_attention_mask)
+
+    similarity = model.evaluate_embeddings(embeddings1.mean(dim = 1) ,embeddings2.mean(dim = 1))  # mean over sequence length to get a single vector per input
+    model.print_evaluation_embeddings(similarity)
 
 if __name__ == '__main__':
     main()
