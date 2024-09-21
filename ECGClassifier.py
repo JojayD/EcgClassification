@@ -1,6 +1,8 @@
 # #Goal to develop neural symbolic methods for ECG classification.
 import torch
 from torch.nn.functional import cosine_similarity
+import matplotlib.pyplot as plt
+import random
 class ECGClassification:
 	def __init__(self ,model_name ,num_labels ,data_path=None):
 		"""
@@ -11,6 +13,14 @@ class ECGClassification:
 		- num_labels: Number of classes (labels) in the ECG classification task.
 		- data_path: Path to the ECG dataset (optional for now).
 		"""
+		self.class_mapping = {
+			"a": 0 ,  # Normal
+			"b": 1 ,  # Myocardial Infarction
+			"c": 2 ,  # ST/T Change
+			"d": 3 ,  # Conduction Disturbance
+			"e": 4  # Hypertrophy
+		}
+
 		self.model_name = model_name
 		self.num_labels = num_labels
 		self.data_path = data_path
@@ -46,6 +56,13 @@ class ECGClassification:
 		else:
 			return data_path
 
+	def generate_mockdata(self, num_labels):
+		"""
+		Generate mock data of the ECG dataset for classification does it based of the map labelings
+		:return:
+		mock data of the outputed size
+		"""
+		self.class_mapping
 	def pre_process_data(self ,raw_data):
 		"""
 		Preprocesses the raw ECG data into BERT-compatible format, including input_ids and attention_mask.
@@ -54,9 +71,11 @@ class ECGClassification:
 		labels = []
 
 		for label ,pairs in raw_data.items():
+			print(label, pairs)
 			for pair in pairs:
 				# Convert pair to a string and tokenize it with attention mask
 				pair_string = " ".join(map(str ,pair))
+
 				encoding = self.tokenizer.encode_plus(
 					pair_string ,
 					return_tensors = 'pt' ,
@@ -71,13 +90,13 @@ class ECGClassification:
 				processed_data['attention_mask'].append(encoding['attention_mask'])
 
 				# Simplified label assignment
-				labels.append(0 if label == "a" else 1)
+				labels.append(self.class_mapping[label])
 
 		# Convert the list of tensors into a single tensor for input_ids and attention_mask
 		processed_data['input_ids'] = torch.cat(processed_data['input_ids'] ,dim = 0)
 		processed_data['attention_mask'] = torch.cat(processed_data['attention_mask'] ,dim = 0)
 		labels = torch.tensor(labels)
-
+		print("Here are the labels", labels)
 		return processed_data ,labels
 
 	def save_model(self):
@@ -153,24 +172,21 @@ class ECGClassification:
 				labels = batch[2]
 
 				outputs = self.model(input_ids = input_ids ,attention_mask = attention_mask)
-				neural_predictions = torch.argmax(outputs.logits ,dim = -1)
-				print("Neural predictions",neural_predictions)
 
-				# Apply symbolic reasoning to refine predictions
-				symbolic_predictions = []
-				for prediction in neural_predictions:
-					refined_prediction = self.symbolic_reasoning(prediction)
-					symbolic_predictions.append(refined_prediction)
+				# Convert logits to probabilities (optional)
+				probabilities = torch.nn.functional.softmax(outputs.logits ,dim = -1)
+				# Get predicted class
+				# neural_predictions = torch.argmax(probabilities ,dim = -1)
+				# neural_predictions= torch.argmax(outputs.logits ,dim = -1)
+				predicted_class = torch.argmax(probabilities,dim = -1)
 
-				# Compare symbolic predictions with true labels (for simplicity)
-				correct += sum([1 for sp ,label in zip(symbolic_predictions ,labels) if
-				                sp == f"Class {chr(65 + label.item())} (Normal Heartbeat)" or sp == f"Class {chr(65 + label.item())} (Abnormal Heartbeat)"])
+				print(f"This is the predicted class: {predicted_class}")
+
+				correct += (predicted_class == labels).sum().item()
 				total += labels.size(0)
 
-				for sp,label in zip(symbolic_predictions ,labels):
-					print(sp,label)
+				accuracy = correct / total
 
-		accuracy = correct / total
 		print(f"Model Accuracy with Symbolic Reasoning: {accuracy:.2f}")
 
 	def extract_embeddings(self, input_ids , attention_mask):
@@ -183,6 +199,34 @@ class ECGClassification:
 		similarity = cosine_similarity(embeddings1 ,embeddings2)
 		return similarity
 
-	def print_evaluation_embeddings(self ,similarity):
+	def graph_evaluation_embeddings(self ,similarity):
+		idx = []
+		value=[]
 		for i , value in enumerate(similarity):
-			print(f"{i}: {value}")
+			idx.append(i)
+			value.append(value)
+		plt.scatter(idx,value)
+		plt.grid(True)
+		plt.show()
+
+	def graph_results(self, train_data,test_data):
+		plt.figure(figsize=(10,10))
+		plt.title(self.model_name)
+		train_a_x = [point[0] for point in train_data["a"]]
+		train_a_y = [point[1] for point in train_data["a"]]
+		test_a_x = [point[0] for point in test_data["a"]]
+		test_a_y = [point[1] for point in test_data["a"]]
+
+		plt.scatter(train_a_x, train_a_y)
+		plt.xlabel("First pair @ 0th index")
+		plt.ylabel("Second pair @ 1st index")
+		plt.show()
+		plt.grid(True)
+
+		plt.scatter(test_a_x, test_a_y)
+		plt.xlabel("First pair @ 0th index")
+		plt.ylabel("Second pair @ 1st index")
+		plt.show()
+		plt.grid(True)
+
+
