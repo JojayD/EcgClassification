@@ -1,15 +1,17 @@
 # #Goal to develop neural symbolic methods for ECG classification.
 import torch
+import torch.nn as nn
 from torch.nn.functional import cosine_similarity
 import matplotlib.pyplot as plt
 import random
-class ECGClassification:
-	def __init__(self ,model_name ,num_labels ,data_path=None):
+class ECGClassification(nn.Module):
+	def __init__(self ,model_name='bert-base-uncased', num_labels=5):
+		super(ECGClassification, self).__init__()
 		"""
 		Initialize the class with the necessary parameters.
 
 		Parameters:
-		- model_name: Name of the pre-trainebel
+		- model_name: Name of the pre-trained model
 		- num_labels: Number of classes (labels) in the ECG classification task.
 		- data_path: Path to the ECG dataset (optional for now).
 		"""
@@ -21,11 +23,29 @@ class ECGClassification:
 			"e": 4  # Hypertrophy
 		}
 
-		self.model_name = model_name
 		self.num_labels = num_labels
-		self.data_path = data_path
+		self.model_name = model_name
 		self.model = self.load_model()
 		self.tokenizer = self.load_tokenizer()
+
+		# Define the classification layer (output size = num_classes)
+		# The input size of this layer should match the hidden size of the BERT model
+		hidden_size = self.model.config.hidden_size  # This is usually 768 for 'bert-base-uncased'
+		print(hidden_size)
+		self.classifier = nn.Linear(hidden_size ,self.num_labels)
+		self.softmax = nn.Softmax(dim = 1)
+
+	def forward(self, inputs_ids, attention_mask):
+		#Pass the input through bert model
+		outputs = self.model(input_ids= inputs_ids, attention_mask= attention_mask)
+
+		# Extract the hidden state of the [CLS] token (first token)
+		cls_token_rep = outputs.last_hidden_state[:,0,:]
+
+		# Pass the [CLS] representation through the classification layer
+		logits = self.classifier(cls_token_rep)  # Shape: (batch_size, num_classes)
+
+		return logits
 
 	def load_model(self):
 		"""
@@ -34,7 +54,7 @@ class ECGClassification:
 		from transformers import BertForSequenceClassification
 
 		# Load the BERT model for classification, fine-tuned for ECG classification
-		return BertForSequenceClassification.from_pretrained(self.model_name ,num_labels = self.num_labels)
+		return BertForSequenceClassification.from_pretrained(self.model_name, num_labels = self.num_labels)
 
 	def load_tokenizer(self):
 		"""
@@ -63,6 +83,8 @@ class ECGClassification:
 		mock data of the outputed size
 		"""
 		self.class_mapping
+
+
 	def pre_process_data(self ,raw_data):
 		"""
 		Preprocesses the raw ECG data into BERT-compatible format, including input_ids and attention_mask.
@@ -85,6 +107,7 @@ class ECGClassification:
 					return_attention_mask = True  # Generate attention mask
 				)
 
+				print(encoding)
 				# Append the input_ids and attention_mask for this sample
 				processed_data['input_ids'].append(encoding['input_ids'])
 				processed_data['attention_mask'].append(encoding['attention_mask'])
@@ -149,10 +172,17 @@ class ECGClassification:
 		- output: The output of the neural network (logits, predictions).
 		"""
 		# This could be a set of rules or heuristics that interprets the model's predictions
-		if output > 0.5:
-			return "Class B (Abnormal Heartbeat)"
-		else:
-			return "Class A (Normal Heartbeat)"
+		match output:
+			case 0:
+				return "a"
+			case 1:
+				return "b"
+			case 2:
+				return "c"
+			case 3:
+				return "d"
+			case 4:
+				return "e"
 
 	def evaluate_model(self ,test_data):
 		"""
@@ -175,9 +205,7 @@ class ECGClassification:
 
 				# Convert logits to probabilities (optional)
 				probabilities = torch.nn.functional.softmax(outputs.logits ,dim = -1)
-				# Get predicted class
-				# neural_predictions = torch.argmax(probabilities ,dim = -1)
-				# neural_predictions= torch.argmax(outputs.logits ,dim = -1)
+
 				predicted_class = torch.argmax(probabilities,dim = -1)
 
 				print(f"This is the predicted class: {predicted_class}")

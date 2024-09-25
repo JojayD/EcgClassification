@@ -6,7 +6,7 @@ from data.ecgdata import mock_data3
 
 def main():
     # Initialize the ECG classifier model
-    model = ECGClassification("bert-base-uncased", 5)
+    model = ECGClassification(num_labels = 5)
 
     # Load and preprocess the training data
     data = model.load_data(mock_data3)  # Load the training data
