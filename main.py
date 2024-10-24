@@ -28,7 +28,8 @@ def main():
     pre_processed_test_data, test_labels = model.pre_process_data(test_data)
 
     #Plotting train and test data
-    model.graph_results(data['train'],data['test'])
+    model.graph_ecg_signal(mock_data3, 'train')
+
 
     test_input_ids = pre_processed_test_data['input_ids']
     test_attention_mask = pre_processed_test_data['attention_mask']

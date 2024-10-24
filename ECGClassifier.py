@@ -1,6 +1,7 @@
 # #Goal to develop neural symbolic methods for ECG classification.
 import torch
 import torch.nn as nn
+from fontTools.ttLib.tables.S__i_l_f import Classes
 from torch.nn.functional import cosine_similarity
 import matplotlib.pyplot as plt
 import random
@@ -143,7 +144,7 @@ class ECGClassification(nn.Module):
 
 		# Use AdamW optimizer for fine-tuning
 		optimizer = AdamW(self.model.parameters() ,lr = 5e-5)
-
+		loss_arr = []
 		for epoch in range(10):  # Number of epochs
 			print(f"Epoch {epoch + 1}")
 			for idx ,batch in enumerate(dataloader):
@@ -154,7 +155,8 @@ class ECGClassification(nn.Module):
 				labels = batch[2]
 				outputs = self.model(input_ids = input_ids ,attention_mask = attention_mask ,labels = labels)
 				loss = outputs.loss
-				print(outputs.loss.item())
+				loss_arr.append(loss.item())
+				print(f"{outputs.loss.item()}")
 				loss.backward()
 				optimizer.step()
 
@@ -163,6 +165,7 @@ class ECGClassification(nn.Module):
 			print(f"Epoch {epoch + 1} completed")
 
 		print("Training complete!")
+		self.graph_loss(loss_arr)
 
 	def symbolic_reasoning(self ,output):
 		"""
@@ -210,13 +213,19 @@ class ECGClassification(nn.Module):
 
 				print(f"This is the predicted class: {predicted_class}")
 
+
+
 				correct += (predicted_class == labels).sum().item()
 				total += labels.size(0)
 
 				accuracy = correct / total
+		symbolic= []
+		for row in predicted_class.numpy():
+			symbol = self.symbolic_reasoning(row)
+			symbolic.append(symbol)
 
 		print(f"Model Accuracy with Symbolic Reasoning: {accuracy:.2f}")
-
+		print(f"Symbols of Symbolic Reasoning: {symbolic}")
 	def extract_embeddings(self, input_ids , attention_mask):
 		with torch.no_grad():
 			outputs = self.model(input_ids = input_ids ,attention_mask = attention_mask, output_hidden_states=True)
@@ -226,7 +235,10 @@ class ECGClassification(nn.Module):
 	def evaluate_embeddings(self ,embeddings1, embeddings2):
 		similarity = cosine_similarity(embeddings1 ,embeddings2)
 		return similarity
-
+	"""
+	Graph Evaluations
+	
+	"""
 	def graph_evaluation_embeddings(self ,similarity):
 		idx = []
 		value=[]
@@ -237,24 +249,29 @@ class ECGClassification(nn.Module):
 		plt.grid(True)
 		plt.show()
 
-	def graph_results(self, train_data,test_data):
-		plt.figure(figsize=(10,10))
-		plt.title(self.model_name)
-		train_a_x = [point[0] for point in train_data["a"]]
-		train_a_y = [point[1] for point in train_data["a"]]
-		test_a_x = [point[0] for point in test_data["a"]]
-		test_a_y = [point[1] for point in test_data["a"]]
-
-		plt.scatter(train_a_x, train_a_y)
-		plt.xlabel("First pair @ 0th index")
-		plt.ylabel("Second pair @ 1st index")
+	def graph_ecg_signal(self, ecg_signal, test_or_train):
+		plt.figure(figsize = (10,10))
+		for label, points in ecg_signal[test_or_train].items():
+			x_values = [x[0] for x in points]
+			y_values = [y[1] for y in points]
+			plt.title(f'Train data symbol {label}')
+			plt.xlabel("")
+			plt.plot(x_values ,y_values ,label = f'Class {label}' ,marker = 'o')  # Using marker='o' to highlight points
+		# plt.legend()
 		plt.show()
-		plt.grid(True)
 
-		plt.scatter(test_a_x, test_a_y)
-		plt.xlabel("First pair @ 0th index")
-		plt.ylabel("Second pair @ 1st index")
-		plt.show()
+
+	def graph_loss(self, training_loss):
+		plt.figure(figsize = (10,10))
+		plt.figure(figsize = (10 ,6))
+		plt.plot(training_loss ,label = 'Training Loss' ,color = 'blue')
+		plt.xlabel('Epochs')
+		plt.ylabel('Loss')
+		plt.title('Training Loss Over Epochs')
+		plt.legend()
 		plt.grid(True)
+		plt.show()
+
+
 
 

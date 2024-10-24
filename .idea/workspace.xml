@@ -4,10 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c1a13e0a-0353-4f31-9436-d39cefb298fd" name="Changes" comment="added symbolic reasoning">
+    <list default="true" id="c1a13e0a-0353-4f31-9436-d39cefb298fd" name="Changes" comment="added nn.Module to add forward function">
+      <change beforePath="$PROJECT_DIR$/.idea/discord.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/discord.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ECGClassifier.py" beforeDir="false" afterPath="$PROJECT_DIR$/ECGClassifier.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/ecgdata.py" beforeDir="false" afterPath="$PROJECT_DIR$/data/ecgdata.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -37,20 +37,20 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Python.main.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Python.main.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "main",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/data" />
@@ -118,7 +118,28 @@
       <workItem from="1726010386023" duration="27000" />
       <workItem from="1726011346368" duration="1121000" />
       <workItem from="1726119513814" duration="3045000" />
-      <workItem from="1726123173831" duration="817000" />
+      <workItem from="1726123173831" duration="5126000" />
+      <workItem from="1726251736208" duration="14037000" />
+      <workItem from="1726545285215" duration="64000" />
+      <workItem from="1726545359568" duration="400000" />
+      <workItem from="1726609613913" duration="137000" />
+      <workItem from="1726609762169" duration="50000" />
+      <workItem from="1726609823588" duration="226000" />
+      <workItem from="1726610055432" duration="48000" />
+      <workItem from="1726857249723" duration="17334000" />
+      <workItem from="1726999194475" duration="6539000" />
+      <workItem from="1727209544482" duration="2057000" />
+      <workItem from="1727295647478" duration="712000" />
+      <workItem from="1727302987393" duration="22000" />
+      <workItem from="1727414349760" duration="3706000" />
+      <workItem from="1727429670188" duration="2914000" />
+      <workItem from="1727493199709" duration="477000" />
+      <workItem from="1727594476564" duration="354000" />
+      <workItem from="1727746484712" duration="68000" />
+      <workItem from="1727746828598" duration="4000" />
+      <workItem from="1727987924780" duration="23000" />
+      <workItem from="1727987953242" duration="14000" />
+      <workItem from="1727987973543" duration="152000" />
     </task>
     <task id="LOCAL-00001" summary="First commit">
       <option name="closed" value="true" />
@@ -152,7 +173,31 @@
       <option name="project" value="LOCAL" />
       <updated>1725905029920</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="added evaluate embeddings">
+      <option name="closed" value="true" />
+      <created>1726124191029</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1726124191029</updated>
+    </task>
+    <task id="LOCAL-00006" summary="added softmax">
+      <option name="closed" value="true" />
+      <created>1726886499847</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1726886499847</updated>
+    </task>
+    <task id="LOCAL-00007" summary="added nn.Module to add forward function">
+      <option name="closed" value="true" />
+      <created>1727295675158</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1727295675158</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -173,9 +218,23 @@
     <MESSAGE value="First commit" />
     <MESSAGE value="added preprocessing, fine-tuning" />
     <MESSAGE value="added symbolic reasoning" />
-    <option name="LAST_COMMIT_MESSAGE" value="added symbolic reasoning" />
+    <MESSAGE value="added evaluate embeddings" />
+    <MESSAGE value="added softmax" />
+    <MESSAGE value="added nn.Module to add forward function" />
+    <option name="LAST_COMMIT_MESSAGE" value="added nn.Module to add forward function" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/data/ecgdata.py</url>
+          <line>14</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/EcgClassification$main.coverage" NAME="main Coverage Results" MODIFIED="1726123671911" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/EcgClassification$main.coverage" NAME="main Coverage Results" MODIFIED="1727432352898" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>
