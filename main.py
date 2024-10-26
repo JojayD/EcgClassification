@@ -1,4 +1,7 @@
 from ECGClassifier import ECGClassification
+from visualize import *
+
+
 import torch
 from data.ecgdata import mock_data
 from data.ecgdata import mock_data2
@@ -40,12 +43,52 @@ def main():
     # Evaluate the model on the test data
     model.evaluate_model(test_dataloader)
 
-    embeddings1 = model.extract_embeddings(train_input_ids ,train_attention_mask)
-    embeddings2 = model.extract_embeddings(test_input_ids ,train_attention_mask)
+    model.model.eval()
+
+    predictions=[]
+    signals=[]
+    with torch.no_grad():
+        for batch in test_dataloader:
+            input_ids = batch[0].to(model.device)
+            attention_mask = batch[1].to(model.device)
+            labels = batch[2].to(model.device)
+
+            outputs = model.model(input_ids=input_ids, attention_mask=attention_mask)
+            probabilities = torch.nn.functional.softmax(outputs.logits, dim=-1)
+            predicted_class_01 = torch.argmax(probabilities, dim=-1)
+
+            # Move tensors to CPU and convert to numpy for processing
+            predicted_class_01 = predicted_class_01.cpu().numpy()
+            batch_signals = batch[0].cpu().numpy()  # Assuming batch[0] contains ECG signal data
+
+            predictions.extend(predicted_class_01)
+            signals.extend(batch_signals)
 
 
-    similarity = model.evaluate_embeddings(embeddings1.mean(dim = 1) ,embeddings2.mean(dim = 1))  # mean over sequence length to get a single vector per input
-    # model.graph_evaluation_embeddings(similarity)
+
+    # Visualize the first N ECG signals with their predicted symbols
+    N = 5  # Number of samples to visualize
+    for i in range(min(N, len(signals))):
+        ecg_signal = signals[i]  # Shape: (sequence_length,)
+        predicted_label = predictions[i]
+        symbol = model.class_mapping.get(predicted_label, 'Unknown')
+
+        # Convert the signal into a list of tuples (x, y)
+        # Here, x is the time step, y is the amplitude
+        ecg_tuples = [(x, y) for x, y in enumerate(ecg_signal)]
+
+        # Choose a timestamp to place the symbol annotation
+        # For demonstration, place it at the midpoint of the signal
+        timestamp = len(ecg_tuples) // 2
+
+        # Call the visualization function
+        visualize_ecg_with_symbols(ecg_tuples, symbol, timestamp, model.class_mapping)
+
+    test_embeddings = model.extract_embeddings(test_input_ids, test_attention_mask).mean(dim=1).numpy()
+    test_true_labels = test_labels.cpu().numpy()
+
+    visualize_embeddings(test_embeddings, test_true_labels, model.class_mapping)
+
 
 if __name__ == '__main__':
     main()

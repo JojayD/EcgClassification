@@ -1,10 +1,13 @@
 # #Goal to develop neural symbolic methods for ECG classification.
 import torch
 import torch.nn as nn
-from fontTools.ttLib.tables.S__i_l_f import Classes
 from torch.nn.functional import cosine_similarity
-import matplotlib.pyplot as plt
-import random
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support, confusion_matrix
+from visualize import *
+
+
+
+
 class ECGClassification(nn.Module):
 	def __init__(self ,model_name='bert-base-uncased', num_labels=5):
 		super(ECGClassification, self).__init__()
@@ -16,6 +19,8 @@ class ECGClassification(nn.Module):
 		- num_labels: Number of classes (labels) in the ECG classification task.
 		- data_path: Path to the ECG dataset (optional for now).
 		"""
+		self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 		self.class_mapping = {
 			"a": 0 ,  # Normal
 			"b": 1 ,  # Myocardial Infarction
@@ -187,6 +192,8 @@ class ECGClassification(nn.Module):
 			case 4:
 				return "e"
 
+
+
 	def evaluate_model(self ,test_data):
 		"""
 		Test the model and evaluate its performance on unseen ECG data,
@@ -197,7 +204,9 @@ class ECGClassification(nn.Module):
 		"""
 		correct = 0
 		total = 0
-
+		predictions = []
+		true_labels = []
+		signals = []
 		for batch in test_data:
 			with torch.no_grad():
 				input_ids = batch[0]
@@ -208,17 +217,17 @@ class ECGClassification(nn.Module):
 
 				# Convert logits to probabilities (optional)
 				probabilities = torch.nn.functional.softmax(outputs.logits ,dim = -1)
-
 				predicted_class = torch.argmax(probabilities,dim = -1)
-
 				print(f"This is the predicted class: {predicted_class}")
-
-
 
 				correct += (predicted_class == labels).sum().item()
 				total += labels.size(0)
 
 				accuracy = correct / total
+				predictions.extend(predicted_class.cpu().numpy())
+				true_labels.extend(labels.cpu().numpy())
+				signals.extend(batch[0].cpu().numpy())  # Assuming batch[0] contains ECG signal data
+
 		symbolic= []
 		for row in predicted_class.numpy():
 			symbol = self.symbolic_reasoning(row)
@@ -226,6 +235,30 @@ class ECGClassification(nn.Module):
 
 		print(f"Model Accuracy with Symbolic Reasoning: {accuracy:.2f}")
 		print(f"Symbols of Symbolic Reasoning: {symbolic}")
+
+		accuracy = accuracy_score(true_labels, predictions)
+		precision, recall, f1, _ = precision_recall_fscore_support(true_labels, predictions, average='micro')
+		cm = confusion_matrix(true_labels, predictions)
+		print(f"Accuracy: {accuracy * 100:.2f}%")
+		print(f"Precision: {precision * 100:.2f}%")
+		print(f"Recall: {recall * 100:.2f}%")
+		print(f"F1-Score: {f1 * 100:.2f}%")
+
+		# Plot Confusion Matrix
+		plt.figure(figsize=(6, 6))
+		sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+					xticklabels=['Normal', 'Abnormal'],
+					yticklabels=['Normal', 'Abnormal'])
+		plt.ylabel('Actual')
+		plt.xlabel('Predicted')
+		plt.title('Confusion Matrix')
+		plt.show()
+
+		# Apply symbolic reasoning
+		symbolic = [self.symbolic_reasoning(pred) for pred in predictions]
+
+		return predictions, signals
+
 	def extract_embeddings(self, input_ids , attention_mask):
 		with torch.no_grad():
 			outputs = self.model(input_ids = input_ids ,attention_mask = attention_mask, output_hidden_states=True)
@@ -235,19 +268,15 @@ class ECGClassification(nn.Module):
 	def evaluate_embeddings(self ,embeddings1, embeddings2):
 		similarity = cosine_similarity(embeddings1 ,embeddings2)
 		return similarity
+
 	"""
+	
 	Graph Evaluations
 	
 	"""
-	def graph_evaluation_embeddings(self ,similarity):
-		idx = []
-		value=[]
-		for i , value in enumerate(similarity):
-			idx.append(i)
-			value.append(value)
-		plt.scatter(idx,value)
-		plt.grid(True)
-		plt.show()
+
+
+
 
 	def graph_ecg_signal(self, ecg_signal, test_or_train):
 		plt.figure(figsize = (10,10))
