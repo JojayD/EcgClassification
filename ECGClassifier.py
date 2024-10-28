@@ -9,6 +9,7 @@ from visualize import *
 
 
 class ECGClassification(nn.Module):
+
 	def __init__(self ,model_name='bert-base-uncased', num_labels=5):
 		super(ECGClassification, self).__init__()
 		"""
@@ -28,7 +29,7 @@ class ECGClassification(nn.Module):
 			"d": 3 ,  # Conduction Disturbance
 			"e": 4  # Hypertrophy
 		}
-
+		self.reverse_class_mapping = {v: k for k, v in self.class_mapping.items()}
 		self.num_labels = num_labels
 		self.model_name = model_name
 		self.model = self.load_model()

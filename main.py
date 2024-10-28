@@ -70,8 +70,10 @@ def main():
     N = 5  # Number of samples to visualize
     for i in range(min(N, len(signals))):
         ecg_signal = signals[i]  # Shape: (sequence_length,)
-        predicted_label = predictions[i]
-        symbol = model.class_mapping.get(predicted_label, 'Unknown')
+        predicted_label = int(predictions[i])
+        reversed_predicted_label = model.reverse_class_mapping[predicted_label]
+        symbol = model.class_mapping.get(predicted_label, reversed_predicted_label)
+        print(symbol)
 
         # Convert the signal into a list of tuples (x, y)
         # Here, x is the time step, y is the amplitude

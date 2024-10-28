@@ -20,9 +20,8 @@ def visualize_ecg_with_symbols(ecg_signal, predicted_class, timestamp, symbol_ma
     plt.xlabel('Time')
     plt.ylabel('Amplitude')
 
-    # Overlay symbol
-    symbol = symbol_mapping.get(predicted_class, '?')
-    plt.text(timestamp, max(y_values), f'Symbol: {symbol}', fontsize=12, color='red')
+    # Overla
+    plt.text(timestamp, max(y_values), f'Symbol: {predicted_class}', fontsize=12, color='red')
 
     plt.legend()
     plt.show()
