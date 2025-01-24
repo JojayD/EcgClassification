@@ -29,7 +29,16 @@ class ECGClassification(nn.Module):
 			"d": 3 ,  # Conduction Disturbance
 			"e": 4  # Hypertrophy
 		}
+
+		self.real_class_mapping = {
+			"A": 0 ,  # Normal
+			"V": 1 ,  # Ventricular issue
+			"x": 2 ,  # Unknown class
+			"J": 3  # Junctional rhythm
+		}
+
 		self.reverse_class_mapping = {v: k for k, v in self.class_mapping.items()}
+		self.reverse_real_class_mapping = {v: k for k, v in self.real_class_mapping.items()}
 		self.num_labels = num_labels
 		self.model_name = model_name
 		self.model = self.load_model()
@@ -120,8 +129,8 @@ class ECGClassification(nn.Module):
 				processed_data['attention_mask'].append(encoding['attention_mask'])
 
 				# Simplified label assignment
-				labels.append(self.class_mapping[label])
-
+				# labels.append(self.class_mapping[label])
+				labels.append(self.real_class_mapping[label])
 		# Convert the list of tensors into a single tensor for input_ids and attention_mask
 		processed_data['input_ids'] = torch.cat(processed_data['input_ids'] ,dim = 0)
 		processed_data['attention_mask'] = torch.cat(processed_data['attention_mask'] ,dim = 0)
@@ -275,9 +284,6 @@ class ECGClassification(nn.Module):
 	Graph Evaluations
 	
 	"""
-
-
-
 
 	def graph_ecg_signal(self, ecg_signal, test_or_train):
 		plt.figure(figsize = (10,10))
