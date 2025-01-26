@@ -4,13 +4,15 @@ import torch.nn as nn
 from torch.nn.functional import cosine_similarity
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support, confusion_matrix
 from visualize import *
+from transformers import AutoModelForSequenceClassification
+from transformers import AdamW
 
 
 
 
 class ECGClassification(nn.Module):
 
-	def __init__(self ,model_name='bert-base-uncased', num_labels=5):
+	def __init__(self ,model_name='codellama/CodeLlama-7b-Python-hf', num_labels=5):
 		super(ECGClassification, self).__init__()
 		"""
 		Initialize the class with the necessary parameters.
@@ -41,27 +43,44 @@ class ECGClassification(nn.Module):
 		self.reverse_real_class_mapping = {v: k for k, v in self.real_class_mapping.items()}
 		self.num_labels = num_labels
 		self.model_name = model_name
-		self.model = self.load_model()
-		self.tokenizer = self.load_tokenizer()
-
+		# self.model = self.load_model()
+		self.model = self.load_llama()
+		# self.tokenizer = self.load_tokenizer()
+		self.tokenizer = self.load_tokenizer_llama()
+		"""BERT MODEL"""
 		# Define the classification layer (output size = num_classes)
 		# The input size of this layer should match the hidden size of the BERT model
-		hidden_size = self.model.config.hidden_size  # This is usually 768 for 'bert-base-uncased'
-		print(hidden_size)
-		self.classifier = nn.Linear(hidden_size ,self.num_labels)
-		self.softmax = nn.Softmax(dim = 1)
+		# hidden_size = self.model.config.hidden_size  # This is usually 768 for 'bert-base-uncased'
+		# print(hidden_size)
+		# self.classifier = nn.Linear(hidden_size ,self.num_labels)
+		# self.softmax = nn.Softmax(dim = 1)
 
 	def forward(self, inputs_ids, attention_mask):
 		#Pass the input through bert model
 		outputs = self.model(input_ids= inputs_ids, attention_mask= attention_mask)
-
+		"""UNCOMMENT FOR BERT MODEL"""
 		# Extract the hidden state of the [CLS] token (first token)
-		cls_token_rep = outputs.last_hidden_state[:,0,:]
+		# cls_token_rep = outputs.last_hidden_state[:,0,:]
 
 		# Pass the [CLS] representation through the classification layer
-		logits = self.classifier(cls_token_rep)  # Shape: (batch_size, num_classes)
+		# logits = self.classifier(cls_token_rep)  # Shape: (batch_size, num_classes)
 
-		return logits
+		# return logits
+		return outputs.logits
+	def load_llama(self):
+		"""
+		Load CodeLLaMA as a sequence classification model.
+		"""
+		from transformers import AutoModelForSequenceClassification
+
+		# Correct model loading
+		model = AutoModelForSequenceClassification.from_pretrained(
+			self.model_name ,
+			num_labels = self.num_labels ,
+			torch_dtype = torch.float16 ,
+			device_map = "auto"
+		).to(self.device)
+
 
 	def load_model(self):
 		"""
@@ -79,6 +98,15 @@ class ECGClassification(nn.Module):
 		from transformers import BertTokenizer
 
 		return BertTokenizer.from_pretrained(self.model_name)
+
+	def load_tokenizer_llama(self):
+		"""
+		Load the tokenizer for CodeLLaMA.
+		"""
+		from transformers import AutoTokenizer
+		tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+		tokenizer.pad_token = tokenizer.eos_token
+		return tokenizer
 
 	def load_data(self, data_path=None):
 		"""
@@ -100,6 +128,34 @@ class ECGClassification(nn.Module):
 		"""
 		self.class_mapping
 
+	def pre_process_data_llama(self ,raw_data):
+		"""
+		Preprocesses the raw ECG data into LLaMA-compatible format, including input_ids and attention_mask.
+		"""
+		processed_data = {'input_ids': [] ,'attention_mask': []}
+		labels = []
+
+		for label ,pairs in raw_data.items():
+			for pair in pairs:
+				pair_string = " ".join(map(str ,pair))
+
+				encoding = self.tokenizer(
+					pair_string ,
+					return_tensors = "pt" ,
+					padding = "max_length" ,
+					max_length = 256 ,
+					truncation = True
+				)
+
+				processed_data['input_ids'].append(encoding['input_ids'])
+				processed_data['attention_mask'].append(encoding['attention_mask'])
+				labels.append(self.real_class_mapping[label])
+
+		processed_data['input_ids'] = torch.cat(processed_data['input_ids'] ,dim = 0).to(self.device)
+		processed_data['attention_mask'] = torch.cat(processed_data['attention_mask'] ,dim = 0).to(self.device)
+		labels = torch.tensor(labels).to(self.device)
+
+		return processed_data ,labels
 
 	def pre_process_data(self ,raw_data):
 		"""
@@ -181,6 +237,32 @@ class ECGClassification(nn.Module):
 
 		print("Training complete!")
 		self.graph_loss(loss_arr)
+
+	def fine_tune_model_llama(self ,dataloader ,epochs=5 ,learning_rate=2e-5):
+		"""
+		Fine-tune CodeLLaMA on ECG data.
+		"""
+		from transformers import AdamW
+
+		optimizer = AdamW(self.model.parameters() ,lr = learning_rate)  # ✅ Fixed Here
+		loss_fn = nn.CrossEntropyLoss()
+		self.model.train()
+
+		for epoch in range(epochs):
+			total_loss = 0
+			for batch in dataloader:
+				optimizer.zero_grad()
+				input_ids ,attention_mask ,labels = batch
+
+				outputs = self.model(input_ids = input_ids ,attention_mask = attention_mask)
+				loss = loss_fn(outputs.logits ,labels)
+
+				loss.backward()
+				optimizer.step()
+
+				total_loss += loss.item()
+
+			print(f"Epoch {epoch + 1}, Loss: {total_loss / len(dataloader)}")
 
 	def symbolic_reasoning(self ,output):
 		"""
