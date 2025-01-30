@@ -12,7 +12,7 @@ from transformers import AdamW
 
 class ECGClassification(nn.Module):
 
-	def __init__(self ,model_name='codellama/CodeLlama-7b-Python-hf', num_labels=5):
+	def __init__(self ,model_name='Bert-Uncased', num_labels=5):
 		super(ECGClassification, self).__init__()
 		"""
 		Initialize the class with the necessary parameters.
@@ -60,13 +60,13 @@ class ECGClassification(nn.Module):
 		outputs = self.model(input_ids= inputs_ids, attention_mask= attention_mask)
 		"""UNCOMMENT FOR BERT MODEL"""
 		# Extract the hidden state of the [CLS] token (first token)
-		# cls_token_rep = outputs.last_hidden_state[:,0,:]
+		cls_token_rep = outputs.last_hidden_state[:,0,:]
 
 		# Pass the [CLS] representation through the classification layer
-		# logits = self.classifier(cls_token_rep)  # Shape: (batch_size, num_classes)
+		logits = self.classifier(cls_token_rep)  # Shape: (batch_size, num_classes)
 
-		# return logits
-		return outputs.logits
+		return logits
+		# return outputs.logits
 	def load_llama(self):
 		"""
 		Load CodeLLaMA as a sequence classification model.

@@ -1,25 +1,35 @@
 import torch
 import torch.nn as nn
 from torch.nn.functional import cosine_similarity
+import os
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support, confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
 from transformers import AutoModel, AutoTokenizer, AdamW
 
 class ECGLlamaClassification(nn.Module):
-    def __init__(self, model_name="codellama/CodeLlama-7b-Python-hf", num_labels=4):
+    def __init__(self, model_name="meta-llama/Llama-3.2-3B", num_labels=4):
         super(ECGLlamaClassification, self).__init__()
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.num_labels = num_labels
         self.model_name = model_name
+        self.hf_token = os.getenv("HUGGINGFACE_TOKEN")
 
         # Load the base CodeLLaMA model
         self.base_model = AutoModel.from_pretrained(
             self.model_name,
             torch_dtype=torch.float16,
             device_map="auto"  # Adjust if using custom device mapping
+
         ).to(self.device)
+        self.real_class_mapping = {
+            "A": 0 ,  # Normal
+            "V": 1 ,  # Ventricular issue
+            "x": 2 ,  # Unknown class
+            "J": 3  # Junctional rhythm
+        }
+        self.reverse_real_class_mapping = {v: k for k ,v in self.real_class_mapping.items()}
 
         # Add a classification head
         self.classifier = nn.Linear(self.base_model.config.hidden_size, self.num_labels).to(self.device)
@@ -27,6 +37,9 @@ class ECGLlamaClassification(nn.Module):
         # Load Tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         self.tokenizer.pad_token = self.tokenizer.eos_token  # Fix padding issue
+
+    def load_data(self, data_path=None):
+        return data_path
 
     def forward(self, input_ids, attention_mask):
         # Pass inputs through the base model
