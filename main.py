@@ -97,7 +97,7 @@ def main_data():
     model = ECGClassification(num_labels=4)
     data = model.load_data(real_data)
     # Define class mappings for real_data
-    pre_processed_data, labels = model.pre_process_data_llama(data)
+    pre_processed_data, labels = model.pre_process_data(data)
 
     # Load and preprocess the training data
 
@@ -110,10 +110,10 @@ def main_data():
     dataset, dataloader = model.create_tensors_dataloader(train_input_ids, train_attention_mask, labels)
 
     # Fine-tune the model using real data
-    model.fine_tune_model_llama(dataloader)
+    model.fine_tune_model(dataloader)
 
     # Use the same data for testing since we don't have a separate test split
-    pre_processed_test_data, test_labels = model.pre_process_data_llama(real_data)
+    pre_processed_test_data, test_labels = model.pre_process_data(real_data)
 
 
     test_input_ids = pre_processed_test_data['input_ids']
@@ -254,4 +254,4 @@ def main_llama():
 
 
 if __name__ == '__main__':
-    main_llama()
+    main_data()

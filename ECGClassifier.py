@@ -12,7 +12,7 @@ from transformers import AdamW
 
 class ECGClassification(nn.Module):
 
-	def __init__(self ,model_name='Bert-Uncased', num_labels=5):
+	def __init__(self ,model_name='google-bert/bert-base-uncased', num_labels=5):
 		super(ECGClassification, self).__init__()
 		"""
 		Initialize the class with the necessary parameters.
@@ -43,17 +43,17 @@ class ECGClassification(nn.Module):
 		self.reverse_real_class_mapping = {v: k for k, v in self.real_class_mapping.items()}
 		self.num_labels = num_labels
 		self.model_name = model_name
-		# self.model = self.load_model()
-		self.model = self.load_llama()
-		# self.tokenizer = self.load_tokenizer()
-		self.tokenizer = self.load_tokenizer_llama()
+		self.model = self.load_model()
+		# self.model = self.load_llama()
+		self.tokenizer = self.load_tokenizer()
+		# self.tokenizer = self.load_tokenizer_llama()
 		"""BERT MODEL"""
 		# Define the classification layer (output size = num_classes)
 		# The input size of this layer should match the hidden size of the BERT model
-		# hidden_size = self.model.config.hidden_size  # This is usually 768 for 'bert-base-uncased'
-		# print(hidden_size)
-		# self.classifier = nn.Linear(hidden_size ,self.num_labels)
-		# self.softmax = nn.Softmax(dim = 1)
+		hidden_size = self.model.config.hidden_size  # This is usually 768 for 'bert-base-uncased'
+		print(hidden_size)
+		self.classifier = nn.Linear(hidden_size ,self.num_labels)
+		self.softmax = nn.Softmax(dim = 1)
 
 	def forward(self, inputs_ids, attention_mask):
 		#Pass the input through bert model
@@ -67,20 +67,6 @@ class ECGClassification(nn.Module):
 
 		return logits
 		# return outputs.logits
-	def load_llama(self):
-		"""
-		Load CodeLLaMA as a sequence classification model.
-		"""
-		from transformers import AutoModelForSequenceClassification
-
-		# Correct model loading
-		model = AutoModelForSequenceClassification.from_pretrained(
-			self.model_name ,
-			num_labels = self.num_labels ,
-			torch_dtype = torch.float16 ,
-			device_map = "auto"
-		).to(self.device)
-
 
 	def load_model(self):
 		"""
