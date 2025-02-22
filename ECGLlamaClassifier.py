@@ -11,49 +11,93 @@ class ECGLlamaClassification(nn.Module):
     def __init__(self, model_name="meta-llama/Llama-3.2-3B", num_labels=4):
         super(ECGLlamaClassification, self).__init__()
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.num_labels = num_labels
         self.model_name = model_name
         self.hf_token = os.getenv("HUGGINGFACE_TOKEN")
 
-        # Load the base CodeLLaMA model
+        # Load the base model with automatic device mapping.
         self.base_model = AutoModel.from_pretrained(
             self.model_name,
             torch_dtype=torch.float16,
-            device_map="auto"  # Adjust if using custom device mapping
+            device_map="auto"  # Automatically manages device placement
+        )
+        # Set device attribute based on the base model's parameters.
+        self.device = next(self.base_model.parameters()).device
 
-        ).to(self.device)
+        # Mapping for classification labels.
         self.real_class_mapping = {
-            "A": 0 ,  # Normal
-            "V": 1 ,  # Ventricular issue
-            "x": 2 ,  # Unknown class
-            "J": 3  # Junctional rhythm
+            "A": 0,  # Normal
+            "V": 1,  # Ventricular issue
+            "x": 2,  # Unknown class
+            "J": 3   # Junctional rhythm
         }
-        self.reverse_real_class_mapping = {v: k for k ,v in self.real_class_mapping.items()}
+        self.reverse_real_class_mapping = {v: k for k, v in self.real_class_mapping.items()}
 
-        # Add a classification head
-        self.classifier = nn.Linear(self.base_model.config.hidden_size, self.num_labels).to(self.device)
+        # Add a classification head without manually moving it.
+        self.classifier = nn.Linear(self.base_model.config.hidden_size ,self.num_labels)
+        self.classifier = self.classifier.to(self.device).half()
 
-        # Load Tokenizer
+        # Load Tokenizer.
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         self.tokenizer.pad_token = self.tokenizer.eos_token  # Fix padding issue
 
-    def load_data(self, data_path=None):
-        return data_path
+    def create_tensors_dataloader(self ,input_ids ,attention_mask ,labels):
+        from torch.utils.data import DataLoader ,TensorDataset
+        dataset = TensorDataset(input_ids ,attention_mask ,labels)
+        dataloader = DataLoader(dataset ,batch_size = 16 ,shuffle = True)  # Adjust batch_size as needed
+        return dataset ,dataloader
+
+    def pre_process_data_llama(self ,raw_data):
+        """
+		Preprocesses the raw ECG data into a tokenized format, including input_ids and attention_mask.
+		Expects raw_data to be a dictionary with keys corresponding to labels and values as lists of data pairs.
+		"""
+        processed_data = {'input_ids': [] ,'attention_mask': []}
+        labels = []
+
+        for label ,pairs in raw_data.items():
+            print(label ,pairs)
+            for pair in pairs:
+                # Convert the pair to a string and tokenize it.
+                pair_string = " ".join(map(str ,pair))
+
+                encoding = self.tokenizer.encode_plus(
+                    pair_string ,
+                    return_tensors = 'pt' ,
+                    padding = 'max_length' ,  # Ensure all sequences have the same length.
+                    max_length = 10 ,  # Adjust the max length as needed.
+                    truncation = True ,  # Truncate sequences that are too long.
+                    return_attention_mask = True
+                )
+
+                print(encoding)
+                # Append the input_ids and attention_mask for this sample.
+                processed_data['input_ids'].append(encoding['input_ids'])
+                processed_data['attention_mask'].append(encoding['attention_mask'])
+
+                # Assign the label using the mapping.
+                labels.append(self.real_class_mapping[label])
+
+        # Concatenate the list of tensors into single tensors.
+        processed_data['input_ids'] = torch.cat(processed_data['input_ids'] ,dim = 0).to(self.device)
+        processed_data['attention_mask'] = torch.cat(processed_data['attention_mask'] ,dim = 0).to(self.device)
+        labels = torch.tensor(labels).to(self.device)
+        print("Here are the labels" ,labels)
+        return processed_data ,labels
 
     def forward(self, input_ids, attention_mask):
-        # Pass inputs through the base model
+        # Pass inputs through the base model.
         outputs = self.base_model(input_ids=input_ids, attention_mask=attention_mask)
-
-        # Aggregate the hidden states (mean pooling as a robust alternative)
+        # Aggregate the hidden states via mean pooling.
         cls_output = torch.mean(outputs.last_hidden_state, dim=1)
-
-        # Pass through the classification head
+        # Pass through the classification head.
         logits = self.classifier(cls_output)
         return logits
 
     def fine_tune_model_llama(self, dataloader, epochs=5, learning_rate=2e-5):
-        optimizer = AdamW(self.parameters(), lr=learning_rate)
+        # optimizer = AdamW(self.parameters(), lr=learning_rate)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=learning_rate)
+
         loss_fn = nn.CrossEntropyLoss()
         self.train()
 
@@ -61,6 +105,7 @@ class ECGLlamaClassification(nn.Module):
             total_loss = 0
             for batch in dataloader:
                 optimizer.zero_grad()
+                # Move tensors in batch to the device (assumes batch is a tuple of tensors).
                 input_ids, attention_mask, labels = [tensor.to(self.device) for tensor in batch]
 
                 logits = self(input_ids=input_ids, attention_mask=attention_mask)
@@ -76,7 +121,7 @@ class ECGLlamaClassification(nn.Module):
 
     def extract_embeddings(self, input_ids, attention_mask):
         """
-        Extract embeddings from CodeLLaMA.
+        Extract embeddings from the base model.
         """
         with torch.no_grad():
             outputs = self.base_model(input_ids=input_ids, attention_mask=attention_mask, output_hidden_states=True)
@@ -89,6 +134,18 @@ class ECGLlamaClassification(nn.Module):
         """
         similarity = cosine_similarity(embeddings1, embeddings2)
         return similarity
+
+    def load_data(self ,data_path=None):
+        """
+		Load and preprocess the ECG dataset. Here we assume a simplified version for now.
+		"""
+        if data_path is None:
+            return {
+                "train": {"a": [[1 ,2] ,[2 ,3]] ,"b": [[100 ,1] ,[101 ,102]]} ,  # Mock data
+                "test": {"a": [[4 ,5] ,[5 ,6]] ,"b": [[110 ,11] ,[111 ,112]]}
+            }
+        else:
+            return data_path
 
     def graph_ecg_signal(self, ecg_signal, test_or_train):
         """
